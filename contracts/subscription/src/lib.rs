@@ -10,8 +10,8 @@ mod test;
 
 pub use error::Error;
 pub use events::{
-    Cancelled, Charged, FeeChanged, MandateCompleted, MandateEnded, PauseChanged, Refunded,
-    Subscribed, Upgraded,
+    Cancelled, Charged, FeeChanged, MandateCompleted, MandateEnded, MandateUpdated, PauseChanged,
+    Refunded, Subscribed, Upgraded,
 };
 pub use interfaces::{PlanRegistryClient, VaultClient};
 pub use types::{ChargeResult, DataKey, Mandate, MandateStatus, Plan};
@@ -157,6 +157,12 @@ impl Subscription {
             .instance()
             .extend_ttl(INSTANCE_THRESHOLD, INSTANCE_BUMP);
 
+        MandateUpdated {
+            mandate_id: id,
+            mandate,
+        }
+        .publish(&env);
+
         Subscribed {
             mandate_id: id,
             subscriber,
@@ -270,6 +276,12 @@ impl Subscription {
         }
 
         Self::write_mandate(&env, &mandate);
+
+        MandateUpdated {
+            mandate_id,
+            mandate: mandate.clone(),
+        }
+        .publish(&env);
 
         Charged {
             mandate_id,
@@ -415,6 +427,12 @@ impl Subscription {
         mandate.keeper_bps = plan.keeper_bps.min(MAX_KEEPER_BPS);
         Self::write_mandate(&env, &mandate);
 
+        MandateUpdated {
+            mandate_id,
+            mandate: mandate.clone(),
+        }
+        .publish(&env);
+
         Upgraded {
             mandate_id,
             subscriber,
@@ -449,6 +467,12 @@ impl Subscription {
         mandate.status = MandateStatus::Cancelled;
         Self::write_mandate(&env, &mandate);
 
+        MandateUpdated {
+            mandate_id,
+            mandate: mandate.clone(),
+        }
+        .publish(&env);
+
         Cancelled {
             mandate_id,
             subscriber,
@@ -476,6 +500,12 @@ impl Subscription {
 
         mandate.status = MandateStatus::Cancelled;
         Self::write_mandate(&env, &mandate);
+
+        MandateUpdated {
+            mandate_id,
+            mandate: mandate.clone(),
+        }
+        .publish(&env);
 
         MandateEnded {
             mandate_id,
@@ -515,6 +545,12 @@ impl Subscription {
         mandate.paused_until = 0;
 
         Self::write_mandate(&env, &mandate);
+
+        MandateUpdated {
+            mandate_id,
+            mandate,
+        }
+        .publish(&env);
 
         PauseChanged {
             mandate_id,
@@ -562,6 +598,12 @@ impl Subscription {
         mandate.paused_until = until;
         mandate.next_charge = mandate.next_charge.max(until);
         Self::write_mandate(&env, &mandate);
+
+        MandateUpdated {
+            mandate_id,
+            mandate,
+        }
+        .publish(&env);
 
         PauseChanged {
             mandate_id,
@@ -611,6 +653,12 @@ impl Subscription {
 
         mandate.refunded += amount;
         Self::write_mandate(&env, &mandate);
+
+        MandateUpdated {
+            mandate_id,
+            mandate: mandate.clone(),
+        }
+        .publish(&env);
 
         Refunded {
             mandate_id,
