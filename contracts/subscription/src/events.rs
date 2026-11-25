@@ -390,3 +390,19 @@ pub struct CommittedRevenueChanged {
     /// Billing period in seconds.
     pub period: u64,
 }
+
+/// Emitted when a referral share is paid out to a referrer on a successful charge (#364).
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReferralPaid {
+    /// ID of the charged mandate.
+    #[topic]
+    pub mandate_id: u64,
+    /// Account receiving the referral reward.
+    #[topic]
+    pub referrer: Address,
+    /// SEP-41 token the reward was paid in.
+    pub token: Address,
+    /// Amount paid to the referrer out of the merchant share.
+    pub amount: i128,
+}

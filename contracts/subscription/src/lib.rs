@@ -86,7 +86,7 @@ pub use error::Error;
 pub use events::{
     Cancelled, ChargeFailed, Charged, CommittedRevenueChanged, ContractUpgraded, FeeChanged,
     MandateCompleted, MandateEnded, MandateTransferred, MandateUpdated, MaxChargesChanged,
-    PauseChanged, ProtocolPauseChanged, Refunded, SeatsChanged, Subscribed, Upgraded,
+    PauseChanged, ProtocolPauseChanged, ReferralPaid, Refunded, SeatsChanged, Subscribed, Upgraded,
 };
 pub use interfaces::{PlanRegistryClient, VaultClient};
 pub use types::{
@@ -672,6 +672,18 @@ mod contract {
                 referrer: mandate.referrer.clone(),
             }
             .publish(&env);
+
+            if let Some(ref referrer) = mandate.referrer {
+                if referral > 0 {
+                    ReferralPaid {
+                        mandate_id,
+                        referrer: referrer.clone(),
+                        token: mandate.token.clone(),
+                        amount: referral,
+                    }
+                    .publish(&env);
+                }
+            }
 
             if completed {
                 MandateCompleted {
@@ -2201,18 +2213,19 @@ mod contract {
                 ledger,
                 wasm_hash,
             };
+            let key = DataKey::UpgradeHistory;
             let mut history: soroban_sdk::Vec<UpgradeRecord> = env
                 .storage()
-                .instance()
-                .get(&DataKey::UpgradeHistory)
+                .persistent()
+                .get(&key)
                 .unwrap_or_else(|| soroban_sdk::Vec::new(env));
             history.push_back(record);
             env.storage()
-                .instance()
-                .set(&DataKey::UpgradeHistory, &history);
+                .persistent()
+                .set(&key, &history);
             env.storage()
-                .instance()
-                .extend_ttl(INSTANCE_THRESHOLD, INSTANCE_BUMP);
+                .persistent()
+                .extend_ttl(&key, PERSIST_THRESHOLD, PERSIST_BUMP);
         }
 
         /// Get the contract's upgrade history.
@@ -2223,7 +2236,7 @@ mod contract {
         /// appear here.
         pub fn upgrade_history(env: Env) -> soroban_sdk::Vec<UpgradeRecord> {
             env.storage()
-                .instance()
+                .persistent()
                 .get(&DataKey::UpgradeHistory)
                 .unwrap_or_else(|| soroban_sdk::Vec::new(&env))
         }
